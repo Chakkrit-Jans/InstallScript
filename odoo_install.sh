@@ -1,7 +1,8 @@
 #!/bin/bash
 ################################################################################
 # Script for installing Odoo on Ubuntu 16.04, 18.04, 20.04 and 22.04 (could be used for other version too)
-# Author: Yenthe Van Ginneken
+# Include om_account_accountant and muk_web_theme in custom-addons 
+# Author: Chakkrit Jansopanakul
 #-------------------------------------------------------------------------------
 # This script will install Odoo on your Ubuntu server. It can install multiple Odoo instances
 # in one Ubuntu because of the different xmlrpc_ports
@@ -17,6 +18,9 @@
 OE_USER="odoo"
 OE_HOME="/$OE_USER"
 OE_HOME_EXT="/$OE_USER/${OE_USER}-server"
+OE_CUSTOM_ADDONS="/$OE_USER/custom/addons"
+OE_TIMEZONE="Asia/Bangkok"
+
 # The default port where this Odoo instance will run under (provided you use the command -c in the terminal)
 # Set to true if you want to install it, false if you don't need it or have it already installed.
 INSTALL_WKHTMLTOPDF="True"
@@ -72,7 +76,13 @@ sudo add-apt-repository universe
 sudo add-apt-repository "deb http://mirrors.kernel.org/ubuntu/ xenial main"
 sudo apt-get update
 sudo apt-get upgrade -y
-sudo apt-get install libpq-dev
+sudo apt-get install libpq-dev -y
+
+echo -e "\n---- Set Timezone ----"
+sudo timedatectl set-timezone $OE_TIMEZONE
+
+echo -e "\n---- Install thai font ----"
+sudo apt install xfonts-thai -y
 
 #--------------------------------------------------
 # Install PostgreSQL Server
@@ -83,7 +93,7 @@ if [ $INSTALL_POSTGRESQL_FOURTEEN = "True" ]; then
     sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc|sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
     sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
     sudo apt-get update
-    sudo apt-get install postgresql-16
+    sudo apt-get install postgresql-16 -y
 else
     echo -e "\n---- Installing the default postgreSQL version based on Linux version ----"
     sudo apt-get install postgresql postgresql-server-dev-all -y
@@ -97,7 +107,7 @@ sudo su - postgres -c "createuser -s $OE_USER" 2> /dev/null || true
 # Install Dependencies
 #--------------------------------------------------
 echo -e "\n--- Installing Python 3 + pip3 --"
-sudo apt-get install python3 python3-pip
+sudo apt-get install python3 python3-pip -y
 sudo apt-get install git python3-cffi build-essential wget python3-dev python3-venv python3-wheel libxslt-dev libzip-dev libldap2-dev libsasl2-dev python3-setuptools node-less libpng-dev libjpeg-dev gdebi -y
 
 echo -e "\n---- Install python packages/requirements ----"
@@ -176,9 +186,12 @@ if [ $IS_ENTERPRISE = "True" ]; then
     sudo npm install -g less-plugin-clean-css
 fi
 
-echo -e "\n---- Create custom module directory ----"
-sudo mkdir $OE_HOME/custom
-sudo mkdir $OE_HOME/custom/addons
+# echo -e "\n---- Create custom module directory ----"
+# sudo mkdir $OE_HOME/custom
+# sudo mkdir $OE_HOME/custom/addons
+
+echo -e "\n==== Clone custom module directory ===="
+sudo git clone --depth 1 --branch $OE_VERSION https://www.github.com/Chakkrit-Jans/odoo-custom-addons $OE_CUSTOM_ADDONS/
 
 echo -e "\n---- Setting permissions on home folder ----"
 sudo chown -R $OE_USER:$OE_USER $OE_HOME/*
